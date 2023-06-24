@@ -6,36 +6,16 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
 )
 
-type album struct {
-	ID     string  `json:"id"`
-	Title  string  `json:"title"`
-	Artist string  `json:"artist"`
-	Price  float64 `json:"price"`
-}
-
-var albums = []album{
-	{
-		ID:     "1",
-		Title:  "Blue Train",
-		Artist: "John Coltrane",
-		Price:  56.99,
-	},
-	{
-		ID:     "2",
-		Title:  "Jeru",
-		Artist: "Gerry Mulligen",
-		Price:  17.99,
-	},
-	{
-		ID:     "3",
-		Title:  "Sarah Vaughan and Clifford Brown",
-		Artist: "Sarah Vaughan",
-		Price:  39.99,
-	},
+type Attraction struct {
+	Id         string `db:"id" json:"id"`
+	Name       string `db:"name" json:"name"`
+	Detail     string `db:"detail" json:"detail"`
+	Coverimage string `db:"coverimage" json:"coverimage"`
 }
 
 var db *sql.DB
@@ -52,34 +32,31 @@ func main() {
 	db.SetMaxIdleConns(10)
 
 	router := gin.Default()
-	router.GET("/albums", getAlbums)
+	router.GET("/attractions", getAttractions)
 
+	router.Use(cors.Default())
 	router.Run("localhost:8080")
 }
 
-func getAlbums(c *gin.Context) {
-	var (
-		id         int
-		name       string
-		detail     string
-		coverimage string
-	)
+func getAttractions(c *gin.Context) {
+	var attractions []Attraction
 	rows, err := db.Query("select id, name, detail, coverimage from attractions")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(&id, &name, &detail, &coverimage)
+		var a Attraction
+		err := rows.Scan(&a.Id, &a.Name, &a.Detail, &a.Coverimage)
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Println(id, name, detail, coverimage)
+		attractions = append(attractions, a)
 	}
 	err = rows.Err()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	c.IndentedJSON(http.StatusOK, albums)
+	c.IndentedJSON(http.StatusOK, attractions)
 }
